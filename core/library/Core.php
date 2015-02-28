@@ -805,6 +805,41 @@ abstract class ShoppCore {
 	}
 
 	/**
+	 * Outputs debug structures to the browser console.
+	 *
+	 * @since 1.3.9
+	 *
+	 * @param mixed $data The data to display in the console.
+	 * @return void
+	 **/
+	public static function debug ( $data ) {
+
+		$backtrace  = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS);
+
+		list($debugcall, $callby, ) = $backtrace;
+
+		$stack = array();
+		foreach ( $backtrace as $id => $call ) {
+			if ( 'debug' == $caller['function'] ) continue;
+			$ref = empty($call['file']) ? 'Call #' . $id : basename($call['file']) . ' @ '. $call['line'];
+
+			$stack[ $ref ] = isset( $call['class'] ) ?
+				$call['class'] . $call['type'] . $call['function'] . "()"
+				: $call['function'];
+		}
+		$callstack = (object) $stack;
+
+		$caller = ( empty($callby['class']) ? '' : $callby['class'] . $callby['type'] ) . $callby['function'] . '() from ' . $debugcall['file'] . ' @ ' . $debugcall['line'];
+
+		shopp_custom_script('shopp', "
+			console.group('Debug " . $caller . "');
+			console.debug(" . json_encode($data) . ");
+			console.log('Call stack: %O', " . json_encode($stack) . ");
+			console.groupEnd();
+		");
+	}
+
+	/**
 	 * Returns the duration (in days) between two timestamps
 	 *
 	 * @author Jonathan Davis
