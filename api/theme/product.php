@@ -2127,6 +2127,7 @@ class ShoppProductThemeAPI implements ShoppAPI {
 		extract($options);
 
 		$taxes = isset($taxes) ? Shopp::str_true($taxes) : null;
+		$taxrates = self::_taxes($O, 'price');
 		$collection_class = ShoppCollection() && isset(ShoppCollection()->slug) ? 'category-' . ShoppCollection()->slug : '';
 
 		if ( 'single' == $mode ) {
@@ -2140,8 +2141,7 @@ class ShoppProductThemeAPI implements ShoppAPI {
 				if ( 'variation' != $pricing->context ) continue;
 
 				$currently = Shopp::str_true($pricing->sale) ? $pricing->promoprice : $pricing->price;
-				$disable = ( $pricetag->type == 'N/A' || ( Shopp::str_true($pricing->inventory) && $pricing->stock == 0 ) );
-
+				$disable = ( $pricing->type == 'N/A' || ( Shopp::str_true($pricing->inventory) && $pricing->stock == 0 ) );
 				$currently = self::_taxed((float)$currently, $O, $pricing->tax, $taxes);
 
 				$discount = 0 == $pricing->price ? 0 : 100 - round( $pricing->promoprice * 100 / $pricing->price );
@@ -2156,7 +2156,7 @@ class ShoppProductThemeAPI implements ShoppAPI {
 				$_->r = $pricing->promoprice != $pricing->price ? money($pricing->price) : false;
 				$_->d = $discount > 0 ? $discount : false;
 
-				if ( $disable && 'show' == $disabled )
+				if ( ! $disable || 'show' == $disabled )
 					$string .= '<option value="' . $pricing->id . '"' . ( $disable ? ' disabled="disabled"' : '' ) . '>' . esc_html(self::_variant_formatlabel($format, $_)) . '</option>' . "\n";
 			}
 			$string .= '</select>';
@@ -2173,9 +2173,14 @@ class ShoppProductThemeAPI implements ShoppAPI {
 
 			$pricekeys = array();
 			foreach ($O->pricekey as $key => $pricing) {
+
+				$currently = Shopp::str_true($pricing->sale) ? $pricing->promoprice : $pricing->price;
+				$disable = ( $pricing->type == 'N/A' || ( Shopp::str_true($pricing->inventory) && $pricing->stock == 0 ) );
+				$currently = self::_taxed((float)$currently, $O, $pricing->tax, $taxes);
+
 				$discount = 100-round($pricing->promoprice * 100 / $pricing->price);
 				$_ = new StdClass();
-				$_->p = 'Donation' != $pricing->type ? (float)apply_filters('shopp_product_variant_price', (Shopp::str_true($pricing->sale) ? $pricing->promoprice : $pricing->price) ) : false;
+				$_->p = 'Donation' != $pricing->type && ! $disable ? (float)apply_filters('shopp_product_variant_price', (Shopp::str_true($pricing->sale) ? $pricing->promoprice : $currently) ) : false;
 				$_->i = Shopp::str_true($pricing->inventory);
 				$_->s = $_->i ? (int)$pricing->stock : false;
 				$_->u = $pricing->sku;

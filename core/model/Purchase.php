@@ -285,29 +285,31 @@ class ShoppPurchase extends ShoppDatabaseObject {
 	}
 
 	public function capturable () {
+		if ( empty($this->events) ) $this->load_events();
 		if ( ! $this->authorized ) return 0.0;
 		return ($this->authorized - (float)$this->captured);
 	}
 
 	public function refundable () {
+		if ( empty($this->events) ) $this->load_events();
 		if (!$this->captured) return 0.0;
 		return ($this->captured - (float)$this->refunded);
 	}
 
 	public function gateway () {
-		$Shopp = Shopp::object();
-		$Gateways = $Shopp->Gateways;
+		$Gateways = Shopp::object()->Gateways;
 
 		$processor = $this->gateway;
 		if ( 'ShoppFreeOrder' == $processor ) return $Gateways->freeorder;
-		if ( isset($Gateways->active[ $processor ]) ) return $Gateways->active[ $processor ];
-		else {
-			foreach ( $Gateways->active as $Gateway ) {
-				if ($processor != $Gateway->name) continue;
-				return $Gateway;
-				break;
-			}
-		}
+
+		$Gateway = $Gateways->get($processor);
+
+		if ( ! $Gateway ) {
+			foreach ( $Gateways->active as $Gateway )
+				if ( $processor == $Gateway->name )
+					return $Gateway;
+		} else return $Gateway;
+
 		return false;
 	}
 
